@@ -5,6 +5,8 @@
   },
   "dependencies": {
     "@fhevm/solidity": "^0.7.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/confidential-contracts": "^0.2.0-rc.1",
     "@openzeppelin/contracts": "^5.4.0"
   }
 }
