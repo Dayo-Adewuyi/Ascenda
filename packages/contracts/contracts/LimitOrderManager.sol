@@ -83,7 +83,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
         bytes32 limitOrderHash;
         bool isStopOrder;
         uint256 executedQuantity;
-        // Fixed: Added estimated amounts for operations
         uint256 estimatedQuantity;
         uint256 estimatedStrikePrice;
         uint256 estimatedLimitPrice;
@@ -103,7 +102,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
         uint256 createdAt;
         uint256 expiration;
         bool isCredit;
-        // Fixed: Added estimated values
         uint256 estimatedNetPremium;
         uint256 estimatedMaxLoss;
         uint256 estimatedMaxProfit;
@@ -124,7 +122,7 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
     mapping(address => uint256[]) public userStrategies;
     mapping(bytes32 => uint256) public limitOrderToDerivativeOrder;
     mapping(address => euint64) public userLockedCollateral;
-    mapping(address => uint256) public userEstimatedLockedCollateral; // Fixed: Added estimated tracking
+    mapping(address => uint256) public userEstimatedLockedCollateral; 
     mapping(uint256 => uint256) public orderToStrategy;
 
     mapping(address => uint256) public emergencyWithdrawalRequests;
@@ -348,7 +346,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             ? FHE.fromExternal(encryptedStopPrice, proofs[4])
             : FHE.asEuint64(0);
 
-        // Fixed: Use estimated amounts for validation
         OrderValidation memory validation = _validateOrderWithEstimates(
             underlying,
             positionType,
@@ -369,7 +366,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             userLockedCollateral[msg.sender],
             collateral
         );
-        // Fixed: Track estimated locked collateral
         userEstimatedLockedCollateral[msg.sender] += estimatedCollateral;
 
         orderId = ++_orderIdCounter;
@@ -394,7 +390,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             limitOrderHash: bytes32(0),
             isStopOrder: isStopOrder,
             executedQuantity: 0,
-            // Fixed: Store estimated amounts
             estimatedQuantity: estimatedQuantity,
             estimatedStrikePrice: estimatedStrikePrice,
             estimatedLimitPrice: estimatedLimitPrice,
@@ -684,7 +679,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             createdAt: block.timestamp,
             expiration: expiration,
             isCredit: isCredit,
-            // Fixed: Store estimated values
             estimatedNetPremium: estimatedNetPremium,
             estimatedMaxLoss: estimatedMaxLoss,
             estimatedMaxProfit: estimatedMaxProfit
@@ -713,7 +707,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             "Request already pending"
         );
 
-        // Fixed: Use estimated locked collateral instead of decrypt
         uint256 estimatedLockedAmount = userEstimatedLockedCollateral[msg.sender];
         require(estimatedLockedAmount > 0, "No locked collateral");
 
@@ -741,7 +734,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
         euint64 lockedAmount = userLockedCollateral[msg.sender];
         uint256 estimatedLockedAmount = userEstimatedLockedCollateral[msg.sender];
         
-        // Fixed: Use estimated amount for validation
         require(estimatedLockedAmount > 0, "No locked collateral");
 
         emergencyWithdrawalRequests[msg.sender] = 0;
@@ -876,7 +868,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
 
     // ==================== INTERNAL FUNCTIONS ====================
 
-    // Fixed: New validation function using estimated amounts
     function _validateOrderWithEstimates(
         string memory underlying,
         AscendaDerivativesEngine.PositionType positionType,
@@ -1010,7 +1001,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
                     maker: order.owner,
                     receiver: address(this),
                     allowedSender: address(0),
-                    // Fixed: Use estimated amounts instead of FHE.decrypt
                     makingAmount: order.estimatedQuantity,
                     takingAmount: order.estimatedLimitPrice,
                     offsets: 0,
@@ -1054,7 +1044,7 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
         euint64 limitPrice,
         uint256 expiration,
         euint64 collateral,
-        uint256[4] memory estimatedParams // Fixed: Added estimated parameters
+        uint256[4] memory estimatedParams 
     ) internal returns (uint256 orderId) {
         orderId = ++_orderIdCounter;
 
@@ -1077,7 +1067,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
             limitOrderHash: bytes32(0),
             isStopOrder: false,
             executedQuantity: 0,
-            // Fixed: Store estimated values
             estimatedQuantity: estimatedParams[0],
             estimatedStrikePrice: estimatedParams[1],
             estimatedLimitPrice: estimatedParams[2],
@@ -1153,7 +1142,6 @@ contract LimitOrderManager is AccessControl, ReentrancyGuard, Pausable {
                     : AscendaDerivativesEngine.PositionType.PUT;
         }
 
-        // Default to CALL
         return AscendaDerivativesEngine.PositionType.CALL;
     }
 

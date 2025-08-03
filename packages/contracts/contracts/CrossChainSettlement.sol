@@ -45,7 +45,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     uint256 public constant ARBITRUM_ONE = 42161;
     uint256 public constant ETHEREUM_TESTNET = 5;
     uint256 public constant ETHERLINK_MAINNET = 42793;
-    uint256 public constant ETHERLINK_TESTNET = 42794;
+    uint256 public constant ETHERLINK_TESTNET = 128123;
     
     
     // ==================== ENUMS ====================
