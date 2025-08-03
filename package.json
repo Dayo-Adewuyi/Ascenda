@@ -17,5 +17,8 @@
   "devDependencies": {
     "concurrently": "^8.0.0",
     "hardhat": "^2.26.1"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^1.4.0"
   }
 }

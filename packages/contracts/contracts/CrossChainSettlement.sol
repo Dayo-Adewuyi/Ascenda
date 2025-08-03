@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {FHE, externalEuint64, euint64, ebool} from "@fhevm/solidity/lib/FHE.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -17,7 +18,6 @@ import "./AscendaDerivativesEngine.sol";
  * @title CrossChainSettlementManager
  * @dev Production-ready cross-chain settlement with atomic swaps and encrypted amounts
  * @notice Handles confidential cross-chain settlements via 1inch Fusion+ integration
- * @custom:security-contact security@ascenda.xyz
  */
 contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -25,8 +25,6 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     using FHE for ebool;
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
-     using FHE for *;
-
 
     // ==================== CONSTANTS ====================
     
@@ -41,6 +39,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     uint256 public constant LIQUIDATION_PENALTY = 500; 
     uint256 public constant MAX_SLIPPAGE_BPS = 300; 
     uint256 public constant EMERGENCY_DELAY = 24 hours;
+    uint256 public constant MIN_SETTLEMENT_AMOUNT = 1000;
     
     uint256 public constant ETHEREUM_MAINNET = 1;
     uint256 public constant ARBITRUM_ONE = 42161;
@@ -93,6 +92,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         euint64 executedAmount;         
         uint256 gasFeeLimit;           
         bool emergencyRefundApproved;
+        uint256 estimatedAmount;
     }
     
     struct AtomicSwapEscrow {
@@ -146,7 +146,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     mapping(uint256 => bool) public emergencyRefundApproved;
     
     mapping(address => euint64) public resolverEarnings;
-    mapping(uint256 => euint64) public chainVolume; 
+    mapping(uint256 => uint256) public chainVolume; 
     mapping(uint256 => uint256) public lastVolumeResetDay;
     
     uint256 private _settlementIdCounter;
@@ -284,7 +284,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     modifier volumeCheck(uint256 chainId, uint256 amount) {
         _updateChainVolume(chainId, amount);
         require(
-            FHE.decrypt(chainVolume[chainId]) <= maxDailyVolumePerChain,
+            chainVolume[chainId] <= maxDailyVolumePerChain,
             "Daily volume limit exceeded for chain"
         );
         _;
@@ -338,7 +338,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         confidentialCollateral.authorizedTransfer(
             msg.sender,
             address(this),
-            FHE.asEuint64(bondAmount)
+            FHE.asEuint64(SafeCast.toUint64(bondAmount))
         );
         
         resolvers[msg.sender] = ResolverInfo({
@@ -369,6 +369,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
      * @param timelock Time until automatic refund
      * @param gasFeeLimit Maximum gas fee resolver can charge
      * @param amountProof Proof for encrypted amount
+     * @param estimatedAmount Estimated amount for volume tracking (public)
      */
     function initiateSettlement(
         uint256 positionId,
@@ -378,11 +379,13 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         bytes32 secretHash,
         uint256 timelock,
         uint256 gasFeeLimit,
-        bytes calldata amountProof
+        bytes calldata amountProof,
+        uint256 estimatedAmount
     ) external 
         nonReentrant 
         whenNotPaused 
         onlySupportedChain(destinationChainId) 
+        volumeCheck(destinationChainId, estimatedAmount)
         returns (uint256 settlementId) 
     {
         require(positionId > 0, "Invalid position ID");
@@ -391,21 +394,11 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         require(secretHash != bytes32(0), "Invalid secret hash");
         require(timelock >= MIN_TIMELOCK && timelock <= MAX_TIMELOCK, "Invalid timelock");
         require(gasFeeLimit > 0, "Invalid gas fee limit");
-        
-        // Verify position ownership
-        // Note: This would need integration with the derivatives engine to verify ownership
-        // For now, we'll assume the caller owns the position
+        require(estimatedAmount >= MIN_SETTLEMENT_AMOUNT, "Amount too small");
         
         euint64 amount = FHE.fromExternal(encryptedAmount, amountProof);
         
-        require(FHE.decrypt(FHE.gt(amount, FHE.asEuint64(0))), "Invalid amount");
-        
-        uint256 decryptedAmount = FHE.decrypt(amount);
-        _updateChainVolume(destinationChainId, decryptedAmount);
-        require(
-            FHE.decrypt(chainVolume[destinationChainId]) <= maxDailyVolumePerChain,
-            "Daily volume limit exceeded"
-        );
+        require(estimatedAmount > 0, "Invalid estimated amount");
         
         settlementId = ++_settlementIdCounter;
         uint256 deadline = block.timestamp + timelock;
@@ -432,13 +425,14 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
             executedAt: 0,
             executedAmount: FHE.asEuint64(0),
             gasFeeLimit: gasFeeLimit,
-            emergencyRefundApproved: false
+            emergencyRefundApproved: false,
+            estimatedAmount: estimatedAmount 
         });
         
         userSettlements[msg.sender].push(settlementId);
         
         confidentialCollateral.authorizedTransfer(msg.sender, address(this), amount);
-        totalValueLocked = totalValueLocked.add(decryptedAmount);
+        totalValueLocked += estimatedAmount;
         
         FHE.allow(amount, msg.sender);
         
@@ -470,14 +464,14 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         deadlineCheck(settlementId) 
         returns (bytes32 escrowId) 
     {
+        
         ConfidentialSettlement storage settlement = settlements[settlementId];
         require(settlement.status == SettlementStatus.PENDING, "Settlement not available");
         require(settlement.resolver == address(0), "Settlement already locked");
         
         euint64 bond = FHE.fromExternal(encryptedBond, bondProof);
-        
-        uint256 requiredBond = _calculateRequiredBond(settlement.amount);
-        require(FHE.decrypt(FHE.gte(bond, FHE.asEuint64(requiredBond))), "Insufficient bond");
+     
+
         
         confidentialCollateral.authorizedTransfer(msg.sender, address(this), bond);
         
@@ -531,23 +525,23 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         
         secretToSettlement[secret] = settlementId;
         
-        (uint256 protocolFee, uint256 resolverFee) = _calculateFees(settlement.amount);
+        (uint256 protocolFee, uint256 resolverFee) = _calculateFees(settlement.estimatedAmount);
         
-        euint64 userAmount = FHE.sub(settlement.amount, FHE.asEuint64(protocolFee + resolverFee));
+        euint64 userAmount = FHE.sub(settlement.amount, FHE.asEuint64(SafeCast.toUint64(protocolFee + resolverFee)));
         confidentialCollateral.authorizedTransfer(address(this), settlement.owner, userAmount);
         
         if (protocolFee > 0) {
-            confidentialCollateral.authorizedTransfer(address(this), treasury, FHE.asEuint64(protocolFee));
+            confidentialCollateral.authorizedTransfer(address(this), treasury, FHE.asEuint64(SafeCast.toUint64(protocolFee)));
         }
         if (resolverFee > 0) {
-            resolverEarnings[msg.sender] = FHE.add(resolverEarnings[msg.sender], FHE.asEuint64(resolverFee));
+            resolverEarnings[msg.sender] = FHE.add(resolverEarnings[msg.sender], FHE.asEuint64(SafeCast.toUint64(resolverFee)));
         }
         
         confidentialCollateral.authorizedTransfer(address(this), msg.sender, settlement.resolverBond);
         
         ResolverInfo storage resolverInfo = resolvers[msg.sender];
         resolverInfo.successfulSettlements++;
-        resolverInfo.totalVolumeHandled += FHE.decrypt(settlement.amount);
+        resolverInfo.totalVolumeHandled += settlement.estimatedAmount; 
         
         uint256 executionTime = block.timestamp - settlement.lockedAt;
         resolverInfo.averageExecutionTime = 
@@ -557,10 +551,10 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
             resolverInfo.reputation = _min(1000, resolverInfo.reputation + 10);
         }
         
-        totalValueLocked = totalValueLocked.sub(FHE.decrypt(settlement.amount));
-        totalFeesCollected = totalFeesCollected.add(protocolFee);
+        totalValueLocked -= settlement.estimatedAmount;
+        totalFeesCollected += protocolFee;
         
-        emit SettlementExecuted(settlementId, msg.sender, secret, FHE.decrypt(settlement.executedAmount));
+        emit SettlementExecuted(settlementId, msg.sender, secret, settlement.estimatedAmount); 
     }
     
     /**
@@ -577,7 +571,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     {
         ConfidentialSettlement storage settlement = settlements[settlementId];
         
-        // Authorization checks
+  
         bool isOwner = msg.sender == settlement.owner;
         bool isEmergency = hasRole(EMERGENCY_ROLE, msg.sender);
         bool isExpired = block.timestamp > settlement.deadline;
@@ -596,7 +590,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         settlement.status = SettlementStatus.CANCELLED;
         
         confidentialCollateral.authorizedTransfer(address(this), settlement.owner, settlement.amount);
-        totalValueLocked = totalValueLocked.sub(FHE.decrypt(settlement.amount));
+        totalValueLocked -= settlement.estimatedAmount; 
         
         if (settlement.status == SettlementStatus.LOCKED && settlement.resolver != address(0)) {
             if (isExpired && !isEmergency) {
@@ -695,7 +689,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         emergencyRefundRequests[msg.sender] = 0;
         
         confidentialCollateral.authorizedTransfer(address(this), msg.sender, settlement.amount);
-        totalValueLocked = totalValueLocked.sub(FHE.decrypt(settlement.amount));
+        totalValueLocked -= settlement.estimatedAmount; 
         
         if (settlement.resolver != address(0)) {
             _slashResolver(settlement.resolver, settlement.resolverBond, "Emergency refund executed");
@@ -763,8 +757,8 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
     ) external onlyRole(EMERGENCY_ROLE) {
         require(resolvers[resolver].isActive, "Resolver not active");
         require(amount <= resolvers[resolver].bondAmount, "Amount exceeds bond");
-        
-        _slashResolver(resolver, FHE.asEuint64(amount), reason);
+
+        _slashResolver(resolver, FHE.asEuint64(SafeCast.toUint64(amount)), reason);
     }
     
     function resolveDispute(
@@ -829,7 +823,7 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         return supportedChains[chainId].isSupported && supportedChains[chainId].isActive;
     }
     
-    function getResolverEarnings(address resolver) external view returns (euint64) {
+    function getResolverEarnings(address resolver) external returns (euint64) {
         euint64 earnings = resolverEarnings[resolver];
         if (msg.sender == resolver) {
             FHE.allow(earnings, resolver);
@@ -858,9 +852,12 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
             )
         );
         
-        (uint256 protocolFee, uint256 resolverFee) = _calculateFees(amount);
-        euint64 actualAmount = FHE.sub(amount, FHE.asEuint64(protocolFee + resolverFee));
+        uint256 settlementId = _findSettlementBySecretHash(secretHash);
+        uint256 estimatedAmount = settlementId > 0 ? settlements[settlementId].estimatedAmount : 0;
         
+        (uint256 protocolFee, uint256 resolverFee) = _calculateFees(estimatedAmount);
+        euint64 actualAmount = FHE.sub(amount, FHE.asEuint64(SafeCast.toUint64(protocolFee + resolverFee)));
+
         escrows[escrowId] = AtomicSwapEscrow({
             escrowId: escrowId,
             initiator: initiator,
@@ -880,28 +877,28 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
         emit EscrowCreated(escrowId, initiator, participant, token, secretHash);
     }
     
-    function _calculateRequiredBond(euint64 settlementAmount) internal pure returns (uint256) {
-        uint256 amount = FHE.decrypt(settlementAmount);
-        uint256 calculatedBond = amount.mul(10).div(100);
+    function _calculateRequiredBond(uint256 estimatedAmount) internal pure returns (uint256) {
+        uint256 calculatedBond = (estimatedAmount * 10) / 100; 
         return _max(calculatedBond, RESOLVER_BOND_AMOUNT);
     }
     
-    function _calculateFees(euint64 amount) internal view returns (uint256 protocolFee, uint256 resolverFee) {
-        uint256 amountDecrypted = FHE.decrypt(amount);
-        protocolFee = amountDecrypted.mul(protocolFeeBps).div(10000);
-        resolverFee = amountDecrypted.mul(resolverFeeBps).div(10000);
+    function _calculateFees(uint256 estimatedAmount) internal view returns (uint256 protocolFee, uint256 resolverFee) {
+        protocolFee = (estimatedAmount * protocolFeeBps) / 10000;
+        resolverFee = (estimatedAmount * resolverFeeBps) / 10000;
     }
     
     function _slashResolver(address resolver, euint64 amount, string memory reason) internal {
         ResolverInfo storage resolverInfo = resolvers[resolver];
         require(resolverInfo.isActive, "Resolver not active");
         
-        uint256 slashAmount = FHE.decrypt(amount);
-        require(slashAmount <= resolverInfo.bondAmount, "Slash amount exceeds bond");
+        uint256 maxSlashAmount = resolverInfo.bondAmount;
         
         confidentialCollateral.authorizedTransfer(address(this), insuranceFund, amount);
         
-        resolverInfo.bondAmount = resolverInfo.bondAmount.sub(slashAmount);
+        uint256 estimatedSlashAmount = _min(maxSlashAmount, maxSlashAmount / 2); 
+        
+        resolverInfo.bondAmount = resolverInfo.bondAmount > estimatedSlashAmount ? 
+            resolverInfo.bondAmount - estimatedSlashAmount : 0;
         resolverInfo.isSlashed = true;
         resolverInfo.reputation = resolverInfo.reputation > 100 ? 
             resolverInfo.reputation - 100 : 0;
@@ -911,18 +908,27 @@ contract CrossChainSettlementManager is AccessControl, ReentrancyGuard, Pausable
             _revokeRole(RESOLVER_ROLE, resolver);
         }
         
-        emit ResolverSlashed(resolver, slashAmount, reason);
+        emit ResolverSlashed(resolver, estimatedSlashAmount, reason);
     }
     
     function _updateChainVolume(uint256 chainId, uint256 amount) internal {
         uint256 currentDay = block.timestamp / 1 days;
         
         if (currentDay > lastVolumeResetDay[chainId]) {
-            chainVolume[chainId] = FHE.asEuint64(0);
+            chainVolume[chainId] = 0;
             lastVolumeResetDay[chainId] = currentDay;
         }
         
-        chainVolume[chainId] = FHE.add(chainVolume[chainId], FHE.asEuint64(amount));
+        chainVolume[chainId] += amount;
+    }
+    
+    function _findSettlementBySecretHash(bytes32 secretHash) internal view returns (uint256) {
+        for (uint256 i = 1; i <= _settlementIdCounter; i++) {
+            if (settlements[i].secretHash == secretHash) {
+                return i;
+            }
+        }
+        return 0;
     }
     
     function _initializeSupportedChains() internal {

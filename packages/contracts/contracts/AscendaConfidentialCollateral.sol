@@ -99,11 +99,7 @@ contract AscendaConfidentialCollateral is
         return _rate;
     }
 
-    /// @notice Decimals of the confidential token
-    function decimals() public view override returns (uint8) {
-        return _decimals;
-    }
-
+    
     /**
      * @notice Authorize contracts to interact with confidential balances.
      * @param contractAddress The contract to authorize/deauthorize

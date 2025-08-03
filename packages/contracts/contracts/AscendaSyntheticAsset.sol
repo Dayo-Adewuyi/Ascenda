@@ -212,7 +212,7 @@ contract AscendaSyntheticAsset is
 function _calculateCollateralReleaseSimple(
     address user,
     euint64 syntheticToBurn
-) internal view returns (euint64) {
+) internal returns (euint64) {
     euint64 userSynthetic = userSyntheticBalances[user];
     euint64 userCollateral = userCollateralLocked[user];
     

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {FHE, externalEuint64, euint64, ebool} from "@fhevm/solidity/lib/FHE.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./AscendaConfidentialCollateral.sol";
@@ -57,7 +58,7 @@ contract AscendaDerivativesEngine is Ownable, ReentrancyGuard {
     event SyntheticAssetAdded(string indexed underlying, address syntheticAsset);
 
     constructor(address oracle_, address confidentialCollateral_)
-        Ownable(){
+        Ownable(msg.sender){
         oracle = IAscendaOracle(oracle_);
         confidentialCollateral = AscendaConfidentialCollateral(confidentialCollateral_);
     }
@@ -133,7 +134,7 @@ contract AscendaDerivativesEngine is Ownable, ReentrancyGuard {
         IAscendaOracle.PriceData memory priceData = oracle.getPrice(position.underlying);
         require(priceData.isValid, "Invalid price data");
 
-        euint64 currentPrice = FHE.asEuint64(priceData.price);
+        euint64 currentPrice = FHE.asEuint64(SafeCast.toUint64(priceData.price));
         euint64 pnl = _calculateConfidentialPnL(position, currentPrice);
         euint64 settlementAmount = FHE.add(position.collateralAmount, pnl);
 
@@ -167,7 +168,7 @@ contract AscendaDerivativesEngine is Ownable, ReentrancyGuard {
 
     function getConfidentialPortfolioValue(
         address user
-    ) external view returns (euint64 totalValue) {
+    ) external returns (euint64 totalValue) {
         uint256[] memory userPositionIds = userPositions[user];
         totalValue = FHE.asEuint64(0);
 
@@ -186,7 +187,7 @@ contract AscendaDerivativesEngine is Ownable, ReentrancyGuard {
     function _calculateConfidentialPnL(
         ConfidentialPosition memory position,
         euint64 currentPrice
-    ) internal pure returns (euint64) {
+    ) internal returns (euint64) {
         euint64 zero = FHE.asEuint64(0);
         euint64 payoff;
 
@@ -208,11 +209,11 @@ contract AscendaDerivativesEngine is Ownable, ReentrancyGuard {
 
     function _getPositionValue(
         ConfidentialPosition memory position
-    ) internal view returns (euint64) {
+    ) internal returns (euint64) {
         IAscendaOracle.PriceData memory priceData = oracle.getPrice(position.underlying);
         if (!priceData.isValid) return position.collateralAmount;
 
-        euint64 currentPrice = FHE.asEuint64(priceData.price);
+        euint64 currentPrice = FHE.asEuint64(SafeCast.toUint64(priceData.price));
         euint64 pnl = _calculateConfidentialPnL(position, currentPrice);
         return FHE.add(position.collateralAmount, pnl);
     }

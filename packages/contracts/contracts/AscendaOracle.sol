@@ -22,7 +22,7 @@ contract AscendaOracle is  Ownable, ReentrancyGuard, IAscendaOracle {
         _;
     }
     
-    constructor() {
+    constructor() Ownable(msg.sender) {
         authorized[msg.sender] = true;
     }
     
@@ -59,10 +59,16 @@ contract AscendaOracle is  Ownable, ReentrancyGuard, IAscendaOracle {
                     isValid: true
                 });
             } catch {
-                return priceData[symbol];
+                PriceData memory fallbackData = priceData[symbol];
+                require(fallbackData.isValid, "No valid price data");
+                require(block.timestamp - fallbackData.timestamp <= PRICE_STALENESS_THRESHOLD, "Stale fallback price");
+                return fallbackData;
             }
         } else {
-            return priceData[symbol];
+            PriceData memory storedData = priceData[symbol];
+            require(storedData.isValid, "No valid price data");
+            require(block.timestamp - storedData.timestamp <= PRICE_STALENESS_THRESHOLD, "Stale stored price");
+            return storedData;
         }
     }
     
