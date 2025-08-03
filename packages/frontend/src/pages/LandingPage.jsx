@@ -1,8 +1,123 @@
+import styled from 'styled-components';
 import { useApp } from '../AppContext';
 import { Button, Card } from '../components/Shared';
 
+const Wrapper = styled.div`
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #eff6ff, #f5f3ff);
+`;
 
- const LandingPage = () => {
+const Section = styled.section`
+  padding-top: 5rem;
+  padding-bottom: 8rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+`;
+
+const Container = styled.div`
+  max-width: 80rem;
+  margin: 0 auto;
+  text-align: center;
+`;
+
+const Title = styled.h1`
+  font-size: 2.25rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(to right, #2563eb, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  @media(min-width: 768px) {
+    font-size: 3.75rem;
+  }
+`;
+
+const Subtitle = styled.p`
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin-bottom: 2rem;
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media(min-width: 768px) {
+    font-size: 1.25rem;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 4rem;
+
+  @media(min-width: 640px) {
+    flex-direction: row;
+  }
+`;
+
+const FeaturesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 2rem;
+  max-width: 72rem;
+  margin: 0 auto;
+
+  @media(min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media(min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+`;
+
+const FeatureIcon = styled.div`
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+`;
+
+const FeatureTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+`;
+
+const FeatureDescription = styled.p`
+  color: #4b5563;
+`;
+
+const StatsSection = styled.section`
+  padding: 5rem 1rem;
+  background-color: #ffffff;
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 2rem;
+  text-align: center;
+
+  @media(min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+`;
+
+const StatValue = styled.div`
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: #2563eb;
+  margin-bottom: 0.5rem;
+`;
+
+const StatLabel = styled.div`
+  color: #4b5563;
+`;
+
+const LandingPage = () => {
   const { setCurrentPage } = useApp();
 
   const features = [
@@ -29,59 +144,56 @@ import { Button, Card } from '../components/Shared';
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <Wrapper>
       {/* Hero Section */}
-      <section className="pt-20 pb-32 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Privacy-First DeFi Trading
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+      <Section>
+        <Container>
+          <Title>Privacy-First DeFi Trading</Title>
+          <Subtitle>
             Trade derivatives on real-world assets with complete privacy using FHEVM encryption 
             and 1inch's advanced protocols
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          </Subtitle>
+          <ButtonGroup>
             <Button onClick={() => setCurrentPage('trading')} className="text-lg px-8 py-4">
               Start Trading
             </Button>
             <Button variant="secondary" className="text-lg px-8 py-4">
               Learn More
             </Button>
-          </div>
-
+          </ButtonGroup>
        
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+          <FeaturesGrid>
             {features.map((feature, index) => (
               <Card key={index} hover className="text-center">
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <FeatureIcon>{feature.icon}</FeatureIcon>
+                <FeatureTitle>{feature.title}</FeatureTitle>
+                <FeatureDescription>{feature.description}</FeatureDescription>
               </Card>
             ))}
-          </div>
-        </div>
-      </section>
+          </FeaturesGrid>
+        </Container>
+      </Section>
 
- 
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      {/* Stats Section */}
+      <StatsSection>
+        <Container>
+          <StatsGrid>
             <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">$2.1B+</div>
-              <div className="text-gray-600">Total Volume Traded</div>
+              <StatValue>$2.1B+</StatValue>
+              <StatLabel>Total Volume Traded</StatLabel>
             </div>
             <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">50K+</div>
-              <div className="text-gray-600">Active Traders</div>
+              <StatValue>50K+</StatValue>
+              <StatLabel>Active Traders</StatLabel>
             </div>
             <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
-              <div className="text-gray-600">Uptime</div>
+              <StatValue>99.9%</StatValue>
+              <StatLabel>Uptime</StatLabel>
             </div>
-          </div>
-        </div>
-      </section>
-    </div>
+          </StatsGrid>
+        </Container>
+      </StatsSection>
+    </Wrapper>
   );
 };
 
