@@ -1,25 +1,34 @@
-import logo from './logo.svg';
-import './App.css';
+import { useApp } from './AppContext';
+import { Header } from './components/Header';
+import { Notifications } from './components/Notifications';
+import  LandingPage from './pages/LandingPage';
+import  TradingPage  from './pages/TradingPage';
+import  PortfolioPage from './pages/PortfolioPage';
+import  AnalyticsPage  from './pages/AnalyticPage';  
 
-function App() {
+const App = () => {
+  const { currentPage } = useApp();
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'trading':
+        return <TradingPage />;
+      case 'portfolio':
+        return <PortfolioPage />;
+      case 'analytics':
+        return <AnalyticsPage />;
+      default:
+        return <LandingPage />;
+    }
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <Notifications />
+      {renderPage()}
     </div>
   );
-}
+};
 
 export default App;

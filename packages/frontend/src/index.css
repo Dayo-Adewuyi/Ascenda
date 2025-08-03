@@ -1,13 +1,292 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ============ src/index.css ============ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS for additional styling */
+@layer base {
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  body {
+    @apply antialiased;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+  /* Custom component styles */
+  .gradient-bg {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, #2563eb 0%, #e11d48 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .card-shadow {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Loading spinner */
+  .spinner {
+    border: 4px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* Form inputs */
+  .form-input {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-600 transition-colors;
+  }
+  
+  .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .form-input.error {
+    @apply border-red-500;
+  }
+  
+  /* Button variants */
+  .btn-base {
+    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300 focus:outline-none focus:ring-4 cursor-pointer;
+  }
+  
+  .btn-primary {
+    @apply btn-base bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-200;
+  }
+  
+  .btn-secondary {
+    @apply btn-base bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-600 hover:text-white focus:ring-blue-200;
+  }
+  
+  .btn-danger {
+    @apply btn-base bg-red-600 text-white hover:bg-red-700 focus:ring-red-200;
+  }
+  
+  .btn-ghost {
+    @apply btn-base bg-transparent text-blue-600 hover:bg-blue-50 focus:ring-blue-200;
+  }
+  
+  .btn-disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+  
+  /* Status indicators */
+  .status-indicator {
+    @apply inline-block w-3 h-3 rounded-full mr-2;
+  }
+  
+  .status-connected {
+    @apply bg-green-500;
+  }
+  
+  .status-disconnected {
+    @apply bg-red-500;
+  }
+  
+  .status-pending {
+    @apply bg-yellow-500;
+  }
+  
+  /* Table styles */
+  .table-container {
+    @apply overflow-x-auto custom-scrollbar;
+  }
+  
+  .table-header {
+    @apply text-left py-3 px-4 font-semibold text-gray-700 border-b border-gray-200;
+  }
+  
+  .table-cell {
+    @apply py-4 px-4 border-b border-gray-100;
+  }
+  
+  /* Position cards */
+  .position-card {
+    @apply bg-white rounded-2xl shadow-md p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .position-pnl-positive {
+    @apply text-green-600 font-bold;
+  }
+  
+  .position-pnl-negative {
+    @apply text-red-600 font-bold;
+  }
+  
+  /* Notification styles */
+  .notification {
+    @apply px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300;
+  }
+  
+  .notification-success {
+    @apply bg-green-500 text-white;
+  }
+  
+  .notification-error {
+    @apply bg-red-500 text-white;
+  }
+  
+  .notification-info {
+    @apply bg-blue-500 text-white;
+  }
+  
+  /* Trading interface */
+  .trading-tab {
+    @apply px-6 py-3 font-semibold transition-colors border-b-2 cursor-pointer;
+  }
+  
+  .trading-tab-active {
+    @apply text-blue-600 border-blue-600;
+  }
+  
+  .trading-tab-inactive {
+    @apply text-gray-600 border-transparent hover:text-blue-600;
+  }
+  
+  /* Charts and analytics */
+  .chart-container {
+    @apply h-64 bg-gray-100 rounded-lg flex items-center justify-center;
+  }
+  
+  .metric-card {
+    @apply text-center p-6;
+  }
+  
+  .metric-value {
+    @apply text-2xl font-bold text-gray-900 mb-2;
+  }
+  
+  .metric-label {
+    @apply text-sm text-gray-600;
+  }
+  
+  .metric-change-positive {
+    @apply text-xs text-green-600;
+  }
+  
+  .metric-change-negative {
+    @apply text-xs text-red-600;
+  }
+}
+
+@layer utilities {
+  /* Custom utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animation-delay-450 {
+    animation-delay: 450ms;
+  }
+  
+  /* Glassmorphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  /* Gradient borders */
+  .gradient-border {
+    position: relative;
+    background: linear-gradient(135deg, #2563eb, #e11d48);
+    padding: 2px;
+    border-radius: 12px;
+  }
+  
+  .gradient-border > div {
+    background: white;
+    border-radius: 10px;
+  }
+}
+
+/* Responsive design helpers */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none;
+  }
+  
+  .mobile-full {
+    width: 100%;
+  }
+  
+  .mobile-stack {
+    flex-direction: column;
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode {
+    @apply bg-gray-900 text-white;
+  }
+  
+  .dark-mode .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .dark-mode .form-input {
+    @apply bg-gray-800 border-gray-700 text-white;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-after: always;
+  }
 }
