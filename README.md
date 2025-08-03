@@ -110,6 +110,11 @@ cd ../backend
 npm install
 ```
 
+### Contract Addresses
+Confidential Collateral deployed to: 0x06639333dB05FfC223165f6e3B76a11Dba4c4b3a
+Oracle deployed to: 0xC079AF4d6c8A439333Fa682654f1367860153b0f
+Derivative Engine deployed to : 0x17a15e5Dc89bb4bA3F322853b259a0737cB3b6Cf
+
 ### Environment Configuration
 
 ```bash

@@ -37,7 +37,7 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 3000));
     
     console.log("Setting TEZO price...");
-    tx = await oracle.updatePrice("TEZO", "200000000", { gasLimit: 900000 });
+    tx = await oracle.updatePrice("TEZO", "200000000", { gasLimit: 1300000 });
     await tx.wait();
     console.log("✅ TEZO price set");
 
@@ -90,7 +90,7 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 5000));
     
     tx = await confidentialCollateral.setContractAuthorization(await derivativesEngine.getAddress(), true, {
-      gasLimit: 500000,
+      gasLimit: 900000,
     });
     await tx.wait();
     console.log("✅ Derivatives Engine authorized");

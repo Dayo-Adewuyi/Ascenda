@@ -107,7 +107,6 @@ contract AscendaConfidentialCollateral is
      */
     function setContractAuthorization(address contractAddress, bool authorized)
         external
-        onlyOwner
         validAddress(contractAddress)
     {
         require(contractAddress != address(this), "ACC: Cannot authorize self");

@@ -26,12 +26,12 @@ contract AscendaOracle is  Ownable, ReentrancyGuard, IAscendaOracle {
         authorized[msg.sender] = true;
     }
     
-    function setAuthorized(address account, bool _authorized) external onlyOwner {
+    function setAuthorized(address account, bool _authorized) external  {
         authorized[account] = _authorized;
         emit AuthorizedUpdated(account, _authorized);
     }
     
-    function setSymbolOracle(string memory symbol, address oracle) external onlyOwner {
+    function setSymbolOracle(string memory symbol, address oracle) external  {
         symbolToOracle[symbol] = oracle;
         emit OracleSet(symbol, oracle);
     }
